@@ -17,8 +17,9 @@ the LEDs are to change their color.
 Why re-invent the wheel? The challenge is to run a long string of LEDs on microcontrollers with limited
 resources (like the ATTiny AVRs). This code allows you to create long runs of color patterns without needing
 RAM to back each pixel. It accomplishes this by dynamically generating the colors based on a run-length encoding
-scheme. On ATTiny controllers, the CPU is not fast enough to handle color gradients, but patterns of solid colors
- work fine.
+scheme. On ATTiny controllers, the CPU is not fast enough to handle dynamicly calculated color gradients, so the
+color delta values have to be explicitly defined in the data stream, but the effect is still good.
+<br>
 
 The run-length encoded byte stream defines a mode+length followed by the palette color<br>
  +-+-+-+-+-+-+-+-+<br>

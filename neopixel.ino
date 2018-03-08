@@ -17,13 +17,19 @@
 // Why re-invent the wheel? The challenge is to run a long string of LEDs on microcontrollers with limited
 // resources (like the ATTiny AVRs). This code allows you to create long runs of color patterns without needing
 // RAM to back each pixel. It accomplishes this by dynamically generating the colors based on a run-length encoding
-// scheme. On ATTiny controllers, the CPU is not fast enough to handle color gradients, but patterns of solid colors
-// work fine.
+// scheme. On ATTiny controllers, the CPU is not fast enough to handle dynamicly calculated color gradients, so the
+// color delta values have to be explicitly defined in the data stream, but the effect is still good.
 //
 // The run-length encoded byte stream defines a mode+length followed by the palette color
 //  +-+-+-+-+-+-+-+-+
 //  |M|M|L|L|L|L|L|L|   MM = 2 bits for mode, LLLLLL = 6 bits for length (1-64) followed by optional palette values
 //  +-+-+-+-+-+-+-+-+
+// There are 4 "modes" in the RLE data stream:
+// MODE_GAP - defines a run of black pixels; no parameters
+// MODE_SIMPLE - defines a run of a single palette color, 1 byte palette entry follows
+// MODE_GRADIENT - defines a run of a gradient color, 1 byte palette entry, followed by 3 bytes for the RGB deltas
+// MODE_END - must be the last byte of the RLE data. Causes the code to start from the beginning
+//
 #define MODE_MASK 0xc0
 #define LENGTH_MASK 0x3f
 // A gap of N 'off' pixels
@@ -66,21 +72,22 @@ signed char dr, dg, db; // color deltas
 //
 const byte pPalette[] PROGMEM = {0,0,0, 0x20,0,0, 0,0x20,0, 0,0,0x20, 0x20,0x20,0, 0x20,0,0x20, 0,0x20,0x20, 0x20,0x20,0x20};
 
+#ifndef TEST_SIMPLE
 // A demo string to show all the colors of the palette
-//const byte pDemo[] PROGMEM = {
-//              MODE_GRADIENT | 0x3, 0x00, 0x01, MODE_GRADIENT | 0x3, 0x01, 0x02,
-//              MODE_GRADIENT | 0x3, 0x02, 0x03, MODE_GRADIENT | 0x3, 0x03, 0x04,
-//              MODE_GRADIENT | 0x3, 0x04, 0x05, MODE_GRADIENT | 0x3, 0x05, 0x06,
-//              MODE_GRADIENT | 0x3, 0x06, 0x07, MODE_GRADIENT | 0x3, 0x07, 0x00,
-//              MODE_END};
-
+const byte pDemo[] PROGMEM = {
+              MODE_GRADIENT | 0x3, 0x00, 0x8, 0, 0, MODE_GRADIENT | 0x3, 0x01, 0xf8, 0x8,0,
+              MODE_GRADIENT | 0x3, 0x02, 0, 0xf8, 0x8, MODE_GRADIENT | 0x3, 0x03, 0x8, 0x8, 0xf8,
+              MODE_GRADIENT | 0x3, 0x04, 0, 0xf8, 0x8, MODE_GRADIENT | 0x3, 0x05, 0xf8, 0x8, 0,
+              MODE_GRADIENT | 0x3, 0x06, 0x8,0,0, MODE_GRADIENT | 0x3, 0x07, 0xf8,0xf8,0xf8,
+              MODE_END};
+#else
 const byte pDemo[] PROGMEM = {
               MODE_SIMPLE | 0x2, 0x00, MODE_SIMPLE | 0x2, 0x01,
               MODE_SIMPLE | 0x2, 0x02, MODE_SIMPLE | 0x2, 0x03,
               MODE_SIMPLE | 0x2, 0x04, MODE_SIMPLE | 0x2, 0x05,
               MODE_SIMPLE | 0x2, 0x06, MODE_SIMPLE | 0x2, 0x07,
               MODE_END};
-
+#endif
 static LEDSTRING mystring;
 
 #if defined (__AVR_ATtiny85__)
@@ -176,20 +183,9 @@ int i, d;
         pString->r = pgm_read_byte(pPalette + i++);
         pString->g = pgm_read_byte(pPalette + i++);
         pString->b = pgm_read_byte(pPalette + i++);
-        i = (int)pgm_read_byte(s++); // get the ending palette entry
-        i *=3; // offset to this palette entry
-        d = (int)pgm_read_byte(pPalette + i++); // red
-        d -= (int)pString->r;
-        d /= (int)pString->iCount;
-        pString->dr = (signed char)d;
-        d = (int)pgm_read_byte(pPalette + i++); // green
-        d -= (int)pString->g;
-        d /= (int)pString->iCount;
-        pString->dg = (signed char)d;
-        d = (int)pgm_read_byte(pPalette + i++); // blue
-        d -= (int)pString->b;
-        d /= (int)pString->iCount;
-        pString->db = (signed char)d;
+        pString->dr = pgm_read_byte(s++); // get the deltas
+        pString->dg = pgm_read_byte(s++);
+        pString->db = pgm_read_byte(s++);
         break;
    }
    pString->pRLE = s; // keep current RLE pointer
@@ -249,20 +245,9 @@ int i, temp, iStep, d;
            pString->r = pgm_read_byte(pPalette + i++);
            pString->g = pgm_read_byte(pPalette + i++);
            pString->b = pgm_read_byte(pPalette + i++);
-           i = (int)pgm_read_byte(s++); // get the ending palette entry
-           i *=3; // offset to this palette entry
-           d = (int)pgm_read_byte(pPalette + i++); // red
-           d -= (int)pString->r;
-           d /= (int)pString->iCount;
-           pString->dr = (signed char)d;
-           d = (int)pgm_read_byte(pPalette + i++); // green
-           d -= (int)pString->g;
-           d /= (int)pString->iCount;
-           pString->dg = (signed char)d;
-           d = (int)pgm_read_byte(pPalette + i++); // blue
-           d -= (int)pString->b;
-           d /= (int)pString->iCount;
-           pString->db = (signed char)d;
+           pString->dr = pgm_read_byte(s++); // get the deltas
+           pString->dg = pgm_read_byte(s++);
+           pString->db = pgm_read_byte(s++);
            break;
       } // switch
    } // for iStep
@@ -330,20 +315,9 @@ int temp, d;
               string.r = pgm_read_byte(pPalette + iOff++);
               string.g = pgm_read_byte(pPalette + iOff++);
               string.b = pgm_read_byte(pPalette + iOff++);
-              iOff = (int)pgm_read_byte(s++); // get the ending palette entry
-              iOff *=3; // offset to this palette entry
-              d = (int)pgm_read_byte(pPalette + iOff++); // red
-              d -= (int)string.r;
-              d /= (int)string.iCount;
-              string.dr = (signed char)d;
-              d = (int)pgm_read_byte(pPalette + iOff++); // green
-              d -= (int)string.g;
-              d /= (int)string.iCount;
-              string.dg = (signed char)d;
-              d = (int)pgm_read_byte(pPalette + iOff++); // blue
-              d -= (int)string.b;
-              d /= (int)string.iCount;
-              string.db = (signed char)d;
+              string.dr = pgm_read_byte(s++); // get the deltas
+              string.dg = pgm_read_byte(s++);
+              string.db = pgm_read_byte(s++);
               break;
          } // switch
    } // for i
@@ -365,11 +339,11 @@ void setup() {
 void loop() {
 int i;
 
-  LEDInit((byte *)pDemo, &mystring, 6);
+  LEDInit((byte *)pDemo, &mystring, 60);
   for (i=0; i<1000; i++)
   {
      LEDShow(&mystring);
      LEDStep(&mystring, 1);
-     delay(250);
+     delay(100);
   }
 }
