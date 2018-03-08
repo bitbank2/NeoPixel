@@ -22,7 +22,7 @@ scheme. On ATTiny controllers, the CPU is not fast enough to handle color gradie
 
 The run-length encoded byte stream defines a mode+length followed by the palette color<br>
  +-+-+-+-+-+-+-+-+<br>
- |M|M|L|L|L|L|L|L|   MM = 2 bits for mode, LLLLLL = 6 bits for length (1-64)<b4>
+ |M|M|L|L|L|L|L|L|   MM = 2 bits for mode, LLLLLL = 6 bits for length (1-64)<br>
  +-+-+-+-+-+-+-+-+<br>
  palette values follow the mode/length byte<br>
 
