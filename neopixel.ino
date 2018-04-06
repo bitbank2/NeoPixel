@@ -30,6 +30,13 @@
 // MODE_GRADIENT - defines a run of a gradient color, 1 byte palette entry, followed by 3 bytes for the RGB deltas
 // MODE_END - must be the last byte of the RLE data. Causes the code to start from the beginning
 //
+// Define BITBANG to use any GPIO line or it will use the SPI data line
+// ATtiny MCUs don't have SPI hardware, so we must use bitbang
+//
+#ifdef __AVR_ATtiny85__
+#define BITBANG
+#endif
+
 #define MODE_MASK 0xc0
 #define LENGTH_MASK 0x3f
 // A gap of N 'off' pixels
@@ -55,7 +62,7 @@ byte r, g, b; // current color
 signed char dr, dg, db; // color deltas
 } LEDSTRING;
 
-#if !defined (__AVR_ATtiny85__)
+#ifndef BITBANG
 #include <SPI.h>
 #else
 #define LED_PORT PORTB // Port of the pin the pixels are connected to
@@ -90,7 +97,7 @@ const byte pDemo[] PROGMEM = {
 #endif
 static LEDSTRING mystring;
 
-#if defined (__AVR_ATtiny85__)
+#ifdef BITBANG
 //
 // This is the "bit-banged" version to transmit 8-bits of data to the WS2812B
 // The timing was tested on a 16Mhz ATTiny85 (Digispark) and would need to be adjusted for other speeds
@@ -326,7 +333,7 @@ int temp, d;
 
 void setup() {
   // put your setup code here, to run once:
-#if defined (__AVR_ATtiny85__)
+#ifdef BITBANG
   bitSet(LED_DDR , LED_BIT); // set up the pin as a digital output
 #else
   SPI.begin();
