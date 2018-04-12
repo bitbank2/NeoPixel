@@ -27,3 +27,5 @@ The run-length encoded byte stream defines a mode+length followed by the palette
  +-+-+-+-+-+-+-+-+<br>
  palette values follow the mode/length byte<br>
 
+If you find this code useful, please consider buying me a cup of coffee<br>
+[![paypal](https://www.paypalobjects.com/en_US/i/btn/btn_donateCC_LG.gif)](https://www.paypal.com/cgi-bin/webscr?cmd=_s-xclick&hosted_button_id=SR4F44J2UR8S4)
